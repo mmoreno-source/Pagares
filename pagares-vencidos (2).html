@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pagarés vencidos</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f5f6f8;--card:#fff;--fg:#14203a;--mut:#65708a;--bd:#dde1ea;--acc:#14315c;--b1:#e3a72f;--b2:#e07b2d;--b3:#cf4a2f;--b4:#8e1f2d;--hov:#eef1f7}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1524;--card:#182036;--fg:#e8ecf5;--mut:#98a3bd;--bd:#2a3453;--acc:#8fb4ff;--hov:#1f2944}}
+:root[data-theme="dark"]{--bg:#0f1524;--card:#182036;--fg:#e8ecf5;--mut:#98a3bd;--bd:#2a3453;--acc:#8fb4ff;--hov:#1f2944}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*:before,*:after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 Archivo,system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:26px;font-weight:800;margin:0 0 2px;letter-spacing:-.01em}
+h2{font-size:18px;font-weight:800;margin:0}
+.sub{color:var(--mut);margin:0 0 18px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+button,select,input{font:inherit;color:var(--fg)}
+.btn{background:var(--acc);color:var(--bg);border:0;border-radius:8px;padding:9px 14px;font-weight:600;cursor:pointer}
+.btn.alt{background:var(--card);color:var(--fg);border:1px solid var(--bd)}
+.btn:focus-visible,select:focus-visible,input:focus-visible,.bk:focus-visible,th button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+input,select{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:8px 10px}
+.drop{border:2px dashed var(--bd);border-radius:12px;padding:34px 16px;text-align:center;background:var(--card);color:var(--mut)}
+.drop.on{border-color:var(--acc);background:var(--hov)}
+.drop b{color:var(--fg);display:block;font-size:17px;margin-bottom:4px}
+.kpis{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:12px;margin-bottom:14px}
+.k{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px}
+.k span{color:var(--mut);font-size:13px;display:block}.k strong{display:block;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.k.main strong{font-size:32px}
+.bks{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.bk{background:var(--card);border:1px solid var(--bd);border-top:5px solid var(--c);border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer}
+.bk[aria-pressed=true]{background:var(--hov);border-color:var(--c)}
+.bk small{color:var(--mut);display:block}.bk b{font-size:17px;font-variant-numeric:tabular-nums}
+.trk{height:6px;background:var(--bd);border-radius:3px;margin-top:6px;overflow:hidden}.trk i{display:block;height:100%;background:var(--c)}
+.map{display:flex;flex-wrap:wrap;gap:8px;font-size:13px;color:var(--mut);margin-bottom:14px;align-items:center}
+.mes{background:var(--hov);border:1px solid var(--bd);border-left:5px solid var(--acc);border-radius:12px;padding:14px;margin-bottom:18px}
+.mes .bar{margin-bottom:12px}.mes .kpis{margin:0}
+.wrap{overflow-x:auto;background:var(--card);border:1px solid var(--bd);border-radius:10px}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--bd)}
+td.det{color:var(--mut);font-size:13px;max-width:340px}
+th button{background:none;border:0;font-weight:600;color:var(--mut);cursor:pointer;padding:0}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--hov)}
+.pill{display:inline-block;min-width:54px;text-align:center;border-radius:999px;padding:2px 10px;color:#fff;font-weight:600;font-variant-numeric:tabular-nums;background:var(--c)}
+.msg{padding:24px;text-align:center;color:var(--mut)}
+@media(max-width:700px){.kpis{grid-template-columns:1fr 1fr}.k.main{grid-column:1/3}.bks{grid-template-columns:1fr 1fr}}
+</style></head>
+<body><main>
+<h1>Pagarés vencidos</h1>
+<p class="sub" id="sub">Cargá el listado del día y se calculan los días de atraso al instante.</p>
+
+<div class="bar">
+  <button class="btn" id="pick">Cargar archivo</button>
+  <input type="file" id="file" accept=".xlsx,.xls,.csv,.txt" hidden>
+  <button class="btn alt" id="demo">Ver con datos de ejemplo</button>
+  <label>Fecha de corte <input type="date" id="cut"></label>
+</div>
+
+<div id="empty" class="drop"><b>Arrastrá acá el archivo de pagarés</b>Excel o CSV exportado del sistema, con las columnas Fecha, Importe, Remitente y Observación. Los datos se procesan en tu navegador y no se envían a ningún lado.</div>
+
+<section id="board" hidden>
+  <div class="map" id="map"></div>
+  <div class="kpis" id="kpis"></div>
+  <div class="bks" id="bks"></div>
+  <section class="mes">
+    <div class="bar"><h2>Cobros del mes</h2><input type="month" id="mon" aria-label="Mes"><button class="btn alt" id="mview">Ver detalle del mes</button></div>
+    <div class="kpis" id="mk"></div>
+  </section>
+  <div class="bar"><h2 id="tt">Pagarés vencidos</h2></div>
+  <div class="bar">
+    <input type="search" id="q" placeholder="Buscar cliente u observación" aria-label="Buscar">
+    <select id="mode" aria-label="Vista"><option value="p">Un renglón por pagaré</option><option value="c">Agrupar por cliente</option></select>
+    <button class="btn alt" id="copy">Copiar resumen</button>
+  </div>
+  <div class="wrap"><table><thead id="th"></thead><tbody id="tb"></tbody></table></div>
+</section>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let CUR='$ ';
+const fmt=n=>CUR+Math.round(n).toLocaleString('es-AR');
+const norm=s=>String(s??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f.]/g,'').trim();
+const BK=[{n:'1 a 30 días',a:1,b:30,c:'var(--b1)'},{n:'31 a 60 días',a:31,b:60,c:'var(--b2)'},{n:'61 a 90 días',a:61,b:90,c:'var(--b3)'},{n:'Más de 90 días',a:91,b:1e9,c:'var(--b4)'}];
+const FIELDS=[['cliente','Cliente',['remitente'],/cliente|deudor|raz[oó]n|nombre|librador/i],['venc','Vencimiento',['fecha'],/venc|fecha/i],['monto','Monto',['importe'],/importe|monto|saldo|total/i],['det','Detalle',['observacion'],/observ|detalle|concepto/i]];
+let S={raw:[],map:{},bucket:null,tab:'v',sort:{k:'dias',d:-1},mixed:false};
+const pad=n=>String(n).padStart(2,'0');
+const today=()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate())};
+const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const ymOf=d=>d.getFullYear()+'-'+pad(d.getMonth()+1);
+$('#cut').value=iso(today());$('#mon').value=ymOf(today());
+
+function parseDate(v){
+  if(v instanceof Date&&!isNaN(v)){const d=new Date(v.getTime()+432e5);return new Date(d.getFullYear(),d.getMonth(),d.getDate())}
+  if(typeof v==='number'&&v>20000&&v<80000){const d=new Date(Math.round((v-25569)*864e5));return new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())}
+  const s=String(v??'').trim();let m;
+  if(m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))return new Date(+m[1],m[2]-1,+m[3]);
+  if(m=s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/)){let y=+m[3];if(y<100)y+=2000;return new Date(y,m[2]-1,+m[1])}
+  return null}
+function parseNum(v){
+  if(typeof v==='number')return v;
+  let s=String(v??'').replace(/[^\d.,-]/g,'');if(!s)return NaN;
+  const c=s.includes(','),p=s.includes('.');
+  if(c&&p)s=s.lastIndexOf(',')>s.lastIndexOf('.')?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');
+  else if(c)s=s.replace(',','.');
+  else if(p&&/^-?\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,'');
+  return parseFloat(s)}
+function parseCSV(t){
+  const first=t.split(/\r?\n/)[0],sep=(first.match(/;/g)||[]).length>=(first.match(/,/g)||[]).length?';':',';
+  const rows=[];let r=[],f='',q=false;
+  for(let i=0;i<t.length;i++){const ch=t[i];
+    if(q){if(ch==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=ch}
+    else if(ch==='"')q=true;
+    else if(ch===sep){r.push(f);f=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;r.push(f);rows.push(r);r=[];f=''}
+    else f+=ch}
+  if(f||r.length){r.push(f);rows.push(r)}
+  return rows.filter(x=>x.some(c=>String(c).trim()))}
+
+function setData(rows){
+  rows=rows.map(r=>r.map(c=>c instanceof Date?pad(c.getDate())+'/'+pad(c.getMonth()+1)+'/'+c.getFullYear():c));
+  let bi=0,bs=-1;rows.slice(0,15).forEach((r,i)=>{const s=FIELDS.filter(f=>r.some(c=>typeof c==='string'&&(f[2].includes(norm(c))||f[3].test(c)))).length;if(s>bs){bs=s;bi=i}});
+  rows=rows.slice(bi);S.raw=rows;S.map={};
+  const h=rows[0].map(x=>String(x??'')),used=[];
+  FIELDS.forEach(([k,,ex,re])=>{let j=h.findIndex((x,i)=>ex.includes(norm(x))&&!used.includes(i));if(j<0)j=h.findIndex((x,i)=>re.test(x)&&!used.includes(i));if(j>=0)used.push(j);S.map[k]=j});
+  CUR='$ ';S.mixed=false;const mi=h.findIndex(x=>norm(x)==='mn');
+  if(mi>=0){const v=rows.slice(1).map(r=>String(r[mi]??'').trim().toUpperCase()).filter(Boolean),d=v.filter(x=>x[0]==='D').length;
+    if(v.length&&d===v.length)CUR='US$ ';else if(d>0)S.mixed=true}
+  try{localStorage.setItem('pv_raw2',JSON.stringify(rows))}catch(e){}
+  render()}
+async function loadFile(f){
+  try{
+    if(/\.(csv|txt)$/i.test(f.name)){setData(parseCSV(await f.text()))}
+    else{const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true});
+      setData(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''}).filter(r=>r.some(c=>String(c).trim())))}
+  }catch(e){alert('No pude leer el archivo. Probá exportarlo como CSV o .xlsx.')}}
+
+function build(){
+  const cut=parseDate($('#cut').value)||today(),m=S.map,out=[];S.diag={f:0,m:0};
+  for(const r of S.raw.slice(1)){
+    const v=m.venc>=0?parseDate(r[m.venc]):null,mo=m.monto>=0?parseNum(r[m.monto]):NaN;
+    if(!v){S.diag.f++;continue}if(isNaN(mo)){S.diag.m++;continue}
+    out.push({cliente:String(m.cliente>=0?r[m.cliente]:'').trim()||'(sin nombre)',det:m.det>=0?String(r[m.det]??'').trim():'',venc:v,monto:mo,dias:Math.round((cut-v)/864e5)})}
+  return out}
+const bkOf=d=>BK.findIndex(b=>d>=b.a&&d<=b.b);
+const sum=a=>a.reduce((s,x)=>s+x.monto,0);
+const dmy=v=>v.split('-').reverse().join('/');
+const mesTxt=ym=>{const p=(ym||'').split('-');return p.length===2&&p[0]?new Date(+p[0],p[1]-1,1).toLocaleDateString('es-AR',{month:'long',year:'numeric'}):'el mes'};
+
+function render(){
+  const has=S.raw.length>1;$('#empty').hidden=has;$('#board').hidden=!has;if(!has)return;
+  const h=S.raw[0].map(x=>String(x??''));
+  $('#map').innerHTML='Columnas: '+FIELDS.map(([k,l])=>`<label>${l} <select data-k="${k}"><option value="-1">—</option>${h.map((x,i)=>`<option value="${i}"${S.map[k]===i?' selected':''}>${esc(x||'(vacía)')}</option>`).join('')}</select></label>`).join('');
+  document.querySelectorAll('#map select').forEach(s=>s.onchange=()=>{S.map[s.dataset.k]=+s.value;render()});
+  const all=build(),q=$('#q').value.toLowerCase(),match=x=>!q||(x.cliente+' '+x.det).toLowerCase().includes(q);
+  const over=all.filter(x=>x.dias>=1),base=over.filter(match),T=sum(base);
+  const avg=base.length?base.reduce((a,x)=>a+x.dias,0)/base.length:0,mx=base.reduce((a,x)=>Math.max(a,x.dias),0);
+  $('#kpis').innerHTML=`<div class="k main"><span>Total vencido</span><strong>${fmt(T)}</strong></div><div class="k"><span>Pagarés</span><strong>${base.length}</strong></div><div class="k"><span>Atraso promedio</span><strong>${Math.round(avg)} días</strong></div><div class="k"><span>Mayor atraso</span><strong>${mx} días</strong></div>`;
+  const sums=BK.map(()=>({n:0,m:0}));base.forEach(x=>{const i=bkOf(x.dias);sums[i].n++;sums[i].m+=x.monto});
+  $('#bks').innerHTML=BK.map((b,i)=>`<button class="bk" style="--c:${b.c}" data-i="${i}" aria-pressed="${S.tab==='v'&&S.bucket===i}"><small>${b.n}</small><b>${fmt(sums[i].m)}</b><small>${sums[i].n} pagarés</small><div class="trk"><i style="width:${T?sums[i].m/T*100:0}%"></i></div></button>`).join('');
+  document.querySelectorAll('.bk').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;S.bucket=S.bucket===i&&S.tab==='v'?null:i;if(S.tab!=='v')S.sort={k:'dias',d:-1};S.tab='v';render()});
+  const ym=$('#mon').value,MT=mesTxt(ym),inM=all.filter(x=>ymOf(x.venc)===ym),pv=inM.filter(x=>x.dias>=1),pd=inM.filter(x=>x.dias<1);
+  $('#mk').innerHTML=`<div class="k main"><span>A cobrar en ${esc(MT)}</span><strong>${fmt(sum(inM))}</strong></div><div class="k"><span>Pagarés</span><strong>${inM.length}</strong></div><div class="k"><span>Ya vencidos</span><strong>${pv.length}</strong><span>${fmt(sum(pv))}</span></div><div class="k"><span>Por vencer</span><strong>${pd.length}</strong><span>${fmt(sum(pd))}</span></div>`;
+  const M=S.tab==='m';$('#mview').textContent=M?'Volver a vencidos':'Ver detalle del mes';$('#tt').textContent=M?'Vencimientos de '+MT:'Pagarés vencidos';
+  let rows=M?inM.filter(match):(S.bucket==null?base:base.filter(x=>bkOf(x.dias)===S.bucket));
+  S.cur={M,MT,rows:rows.slice(),T,base,inM,pv,pd};
+  const grp=$('#mode').value==='c';
+  if(grp){const g={};rows.forEach(x=>{const o=g[x.cliente]||(g[x.cliente]={cliente:x.cliente,n:0,monto:0,dias:-1e9,venc:x.venc});o.n++;o.monto+=x.monto;o.dias=Math.max(o.dias,x.dias);if(x.venc<o.venc)o.venc=x.venc});rows=Object.values(g)}
+  const cols=grp?(M?[['cliente','Cliente'],['n','Pagarés','n'],['venc','Primer vencimiento'],['monto','Monto','n']]:[['cliente','Cliente'],['n','Pagarés','n'],['dias','Mayor atraso','n'],['monto','Monto','n']]):[['cliente','Cliente'],['det','Observación'],['venc','Vence'],['dias',M?'Estado':'Días vencido','n'],['monto','Monto','n']];
+  if(!cols.some(c=>c[0]===S.sort.k))S.sort=M?{k:'venc',d:1}:{k:'dias',d:-1};
+  const {k,d}=S.sort;rows.sort((a,b)=>(a[k]>b[k]?1:a[k]<b[k]?-1:0)*d);
+  $('#th').innerHTML='<tr>'+cols.map(([c,l,n])=>`<th class="${n||''}" aria-sort="${S.sort.k===c?(d>0?'ascending':'descending'):'none'}"><button data-k="${c}">${l}${S.sort.k===c?(d>0?' ▲':' ▼'):''}</button></th>`).join('')+'</tr>';
+  document.querySelectorAll('#th button').forEach(b=>b.onclick=()=>{S.sort={k:b.dataset.k,d:S.sort.k===b.dataset.k?-S.sort.d:-1};render()});
+  const dmyD=v=>pad(v.getDate())+'/'+pad(v.getMonth()+1)+'/'+v.getFullYear();
+  const cell=(c,x)=>c==='dias'?(x.dias>=1?`<td class="n"><span class="pill" style="--c:${BK[bkOf(x.dias)].c}">${x.dias}</span></td>`:`<td class="n" style="color:var(--mut)">${x.dias===0?'vence hoy':'en '+(-x.dias)+' d'}</td>`):c==='monto'?`<td class="n">${fmt(x.monto)}</td>`:c==='venc'?`<td>${dmyD(x.venc)}</td>`:c==='det'?`<td class="det">${esc(x.det)}</td>`:`<td class="${c==='n'?'n':''}">${esc(x[c])}</td>`;
+  $('#tb').innerHTML=rows.length?rows.map(x=>'<tr>'+cols.map(([c])=>cell(c,x)).join('')+'</tr>').join(''):`<tr><td colspan="${cols.length}" class="msg">No hay pagarés para mostrar con estos filtros. Revisá la fecha de corte, el mes o las columnas elegidas.</td></tr>`;
+  const D=S.diag,ign=D.f+D.m;
+  $('#sub').textContent=`Al ${dmy($('#cut').value)} · ${over.length} pagarés vencidos por ${fmt(sum(over))}`+(ign?` · ${ign} filas ignoradas (sin fecha o monto válido)`:'')+(S.mixed?' · Atención: el archivo mezcla monedas':'')}
+
+$('#pick').onclick=()=>$('#file').click();
+$('#file').onchange=e=>e.target.files[0]&&loadFile(e.target.files[0]);
+['q','mode','cut','mon'].forEach(id=>$('#'+id).addEventListener(id==='q'?'input':'change',render));
+$('#mview').onclick=()=>{S.tab=S.tab==='m'?'v':'m';S.sort=S.tab==='m'?{k:'venc',d:1}:{k:'dias',d:-1};render()};
+const dz=$('#empty');
+['dragover','dragenter'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('on')}));
+['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('on')}));
+document.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)loadFile(f)});
+$('#copy').onclick=async()=>{
+  const c=S.cur,top=a=>{const g={};a.forEach(x=>g[x.cliente]=(g[x.cliente]||0)+x.monto);return Object.entries(g).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([n,m])=>`- ${n}: ${fmt(m)}`).join('\n')};
+  let t;
+  if(c.M)t=`Cobros de ${c.MT}\nTotal a cobrar: ${fmt(sum(c.inM))} en ${c.inM.length} pagarés\nYa vencidos: ${c.pv.length} (${fmt(sum(c.pv))})\nPor vencer: ${c.pd.length} (${fmt(sum(c.pd))})\nMayores importes:\n${top(c.inM)}`;
+  else t=`Pagarés vencidos al ${dmy($('#cut').value)}\nTotal: ${fmt(c.T)} en ${c.base.length} pagarés\n`+BK.map(b=>{const s=c.base.filter(x=>x.dias>=b.a&&x.dias<=b.b);return `${b.n}: ${s.length} pagarés, ${fmt(sum(s))}`}).join('\n')+`\nMayores deudores:\n${top(c.base)}`;
+  try{await navigator.clipboard.writeText(t);$('#copy').textContent='Resumen copiado'}catch(e){$('#copy').textContent='No se pudo copiar'}
+  setTimeout(()=>$('#copy').textContent='Copiar resumen',1800)};
+$('#demo').onclick=()=>{
+  const nom=['Agro Los Álamos SRL','Hnos. Pérez','Establecimiento La Aurora','Martín Gallardo','Cereales del Oeste','Don Aníbal S.A.','Juan Cruz Ibarra','Transportes Rossi','Estancia Santa Rita','Lucía Fernández'],obs=['TRACTOR 7630','COSECHADORA TC5090','PULVERIZADORA','SEMBRADORA','TRACTOR TL95'],rows=[['Fecha','Importe','Remitente','Observación','Mn.']];
+  const off=[3,12,25,38,47,58,66,79,88,102,120,150,9,20,-5,-18,-30,-45,-60,-75,-90,-120,-10,-25,-40,17];
+  off.forEach((o,i)=>{const d=new Date(today());d.setDate(d.getDate()-o);rows.push([pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear(),(1+((i*37)%29))*3500+i*125,nom[i%10],obs[i%5]+'/NO CHEQUE A CTA','D'])});
+  setData(rows)};
+try{const s=localStorage.getItem('pv_raw2');if(s)setData(JSON.parse(s))}catch(e){}
+</script></body></html>
